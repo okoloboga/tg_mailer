@@ -201,7 +201,7 @@ async def process_channel(callback: CallbackQuery, state: FSMContext):
             schedule_type=schedule_type,
             schedule_time=data["schedule_time"]
         )
-        await callback.message.edit_text(f"Задача #{task_id} создана!", reply_markup=back_keyboard())
+        await callback.message.edit_text(f"#{task_id} создана!", reply_markup=back_keyboard())
     
     await state.clear()
     await callback.answer()
@@ -239,7 +239,7 @@ async def process_task_selection(callback: CallbackQuery):
 async def process_delete_task(callback: CallbackQuery):
     task_id = int(callback.data.split("_")[1])
     delete_task(task_id)
-    await callback.message.edit_text(f"Задача #{task_id} удалена!", reply_markup=back_keyboard())
+    await callback.message.edit_text(f"#{task_id} удалена!", reply_markup=back_keyboard())
     await callback.answer()
 
 # Обработка редактирования — выбор, что редактировать
@@ -253,7 +253,7 @@ async def process_edit_task(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # Обработка выбора действия редактирования
-@main_router.callback_query(CreateTask.edit_action, F.data.startswith("editmessage_"))
+@main_router.callback_query(CreateTask.edit_action, F.data.startswith("edit_message_"))
 async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
@@ -263,7 +263,7 @@ async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # Обработка выбора действия редактирования
-@main_router.callback_query(CreateTask.edit_action, F.data.startswith("edittime_"))
+@main_router.callback_query(CreateTask.edit_action, F.data.startswith("edit_time_"))
 async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     task_id = data["task_id"]
@@ -278,11 +278,10 @@ async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     else:
         # Если время уже задано, используем его как начальное значение
         selected_date = datetime.now()
-        await state.update_data(schedule_type=schedule_type, message=message)
         if task and task["schedule_time"]:
             selected_date = datetime.strptime(task["schedule_time"], "%Y-%m-%d %H:%M:%S")
         await callback.message.edit_text("Выберите новую дату:", reply_markup=get_date_keyboard(selected_date))
-        await state.set_state(CreateTask.schedule_date)
+        await state.set_state(CreateTask.edit_date)
     
     await callback.answer()
 
