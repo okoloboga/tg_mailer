@@ -230,7 +230,7 @@ async def process_confirm_time(callback: CallbackQuery, state: FSMContext):
 
 @main_router.callback_query(F.data.startswith("task_"))
 async def process_task_selection(callback: CallbackQuery):
-    logger.info(callback.data.split)
+    logger.info(callback.data.split("_"))
     task_id = int(callback.data.split("_")[1])
     await callback.message.edit_text("Выберите действие:", reply_markup=get_task_action_keyboard(task_id))
     await callback.answer()
@@ -245,7 +245,7 @@ async def process_delete_task(callback: CallbackQuery):
 # Обработка редактирования — выбор, что редактировать
 @main_router.callback_query(F.data.startswith("edit_"))
 async def process_edit_task(callback: CallbackQuery, state: FSMContext):
-    logger.info(callback.data.split)
+    logger.info(callback.data.split("_"))
     task_id = int(callback.data.split("_")[1])
     await state.update_data(task_id=task_id)
     await callback.message.edit_text("Что хотите редактировать?", reply_markup=get_edit_action_keyboard(task_id))
