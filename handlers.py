@@ -177,16 +177,25 @@ async def process_channel(callback: CallbackQuery, state: FSMContext):
         return
 
     data = await state.get_data()
-    task_id = add_task(
-        message=data["message"],
-        channel_id=selected_channel.id,
-        schedule_type=data["schedule_type"],
-        schedule_time=data["schedule_time"]
-    )
-    await callback.message.edit_text(f"Задача #{task_id} создана!", reply_markup=back_keyboard())
+    schedule_type = data["schedule_type"]
+    
+    if schedule_type == "immediate":
+        # Для immediate отправляем сообщение сразу
+        bot = callback.bot  # Получаем объект Bot из callback
+        await bot.send_message(chat_id=selected_channel.id, text=data["message"])
+        await callback.message.edit_text("Сообщение отправлено сразу!", reply_markup=back_keyboard())
+    else:
+        # Для delayed и daily создаём задачу
+        task_id = add_task(
+            message=data["message"],
+            channel_id=selected_channel.id,
+            schedule_type=schedule_type,
+            schedule_time=data["schedule_time"]
+        )
+        await callback.message.edit_text(f"Задача #{task_id} создана!", reply_markup=back_keyboard())
+    
     await state.clear()
     await callback.answer()
-
 
 @main_router.callback_query(F.data.startswith("task_"))
 async def process_task_selection(callback: CallbackQuery):
