@@ -15,7 +15,8 @@ from keyboards import (
     get_date_keyboard,
     get_time_keyboard,
     get_edit_action_keyboard,
-    get_start_keyboard  # Добавляем новую клавиатуру
+    get_start_keyboard,
+    back_keyboard
 )
 
 main_router = Router()
@@ -72,7 +73,7 @@ async def process_start_action(callback: CallbackQuery, state: FSMContext):
     elif action == "start_manage":
         tasks = load_tasks()
         if not tasks:
-            await callback.message.edit_text("Нет активных задач!")
+            await callback.message.edit_text("Нет активных задач!", reply_markup=back_keyboard())
         else:
             await callback.message.edit_text("Выберите задачу для управления:", reply_markup=get_task_management_keyboard(tasks))
     
