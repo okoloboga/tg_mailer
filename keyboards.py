@@ -79,3 +79,13 @@ def get_edit_action_keyboard(task_id: int) -> InlineKeyboardMarkup:
         InlineKeyboardButton("Редактировать время", callback_data=f"edit_time_{task_id}")
     )
     return kb
+
+# Новая функция для стартовой клавиатуры
+def get_start_keyboard() -> InlineKeyboardMarkup:
+    """Инлайн-клавиатура для стартового сообщения."""
+    kb = InlineKeyboardMarkup()
+    kb.row(
+        InlineKeyboardButton("Создать задачу", callback_data="start_create"),
+        InlineKeyboardButton("Управление задачами", callback_data="start_manage")
+    )
+    return kb

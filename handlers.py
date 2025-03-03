@@ -14,7 +14,8 @@ from keyboards import (
     get_task_action_keyboard,
     get_date_keyboard,
     get_time_keyboard,
-    get_edit_action_keyboard  # Добавляем новую клавиатуру
+    get_edit_action_keyboard,
+    get_start_keyboard  # Добавляем новую клавиатуру
 )
 
 main_router = Router()
@@ -31,24 +32,39 @@ class CreateTask(StatesGroup):
     edit_date = State()  # Для редактирования даты
     edit_time = State()  # Для редактирования времени
 
-# Проверка, что пользователь — админ
+# Проверка, что пользователь — админ, и стартовое сообщение
 @main_router.message(Command("start"))
 async def cmd_start(message: Message):
     admin_config = get_config(Admin, "admin")
     if str(message.from_user.id) != admin_config.id:
         await message.answer("Вы не администратор!")
         return
-    await message.answer("Привет! Я бот для управления каналами. Используй /create для создания задачи или /manage для управления задачами.")
+    await message.answer(
+        "Привет! Я бот для управления каналами. Что хочешь сделать?",
+        reply_markup=get_start_keyboard()
+    )
 
-# Создание новой задачи
-@main_router.message(Command("create"))
-async def cmd_create(message: Message, state: FSMContext):
+# Обработка кнопок стартового меню
+@main_router.callback_query(F.data.in_(["start_create", "start_manage"]))
+async def process_start_action(callback: CallbackQuery, state: FSMContext):
+    action = callback.data
     admin_config = get_config(Admin, "admin")
-    if str(message.from_user.id) != admin_config.id:
-        await message.answer("Вы не администратор!")
+    if str(callback.from_user.id) != admin_config.id:
+        await callback.message.edit_text("Вы не администратор!")
+        await callback.answer()
         return
-    await message.answer("Введите текст сообщения:")
-    await state.set_state(CreateTask.message)
+
+    if action == "start_create":
+        await callback.message.edit_text("Введите текст сообщения:")
+        await state.set_state(CreateTask.message)
+    elif action == "start_manage":
+        tasks = load_tasks()
+        if not tasks:
+            await callback.message.edit_text("Нет активных задач!")
+        else:
+            await callback.message.edit_text("Выберите задачу для управления:", reply_markup=get_task_management_keyboard(tasks))
+    
+    await callback.answer()
 
 @main_router.message(CreateTask.message)
 async def process_message(message: Message, state: FSMContext):
@@ -158,18 +174,6 @@ async def process_channel(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer()
 
-# Управление задачами
-@main_router.message(Command("manage"))
-async def cmd_manage(message: Message):
-    admin_config = get_config(Admin, "admin")
-    if str(message.from_user.id) != admin_config.id:
-        await message.answer("Вы не администратор!")
-        return
-    tasks = load_tasks()
-    if not tasks:
-        await message.answer("Нет активных задач!")
-        return
-    await message.answer("Выберите задачу для управления:", reply_markup=get_task_management_keyboard(tasks))
 
 @main_router.callback_query(F.data.startswith("task_"))
 async def process_task_selection(callback: CallbackQuery):
