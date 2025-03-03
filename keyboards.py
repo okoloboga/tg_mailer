@@ -7,10 +7,10 @@ def get_schedule_type_keyboard() -> InlineKeyboardBuilder:
     """Инлайн-клавиатура для выбора типа отправки."""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="Сразу", callback_data="schedule_immediate"),
-        InlineKeyboardButton(text="Позже", callback_data="schedule_delayed")
+        InlineKeyboardButton(text="👍 Сразу", callback_data="schedule_immediate"),
+        InlineKeyboardButton(text="⏳ Позже", callback_data="schedule_delayed")
     )
-    builder.row(InlineKeyboardButton(text="Ежедневно", callback_data="schedule_daily"))
+    builder.row(InlineKeyboardButton(text="🌓 Ежедневно 🌓", callback_data="schedule_daily"))
     return builder.as_markup()
 
 def get_channel_keyboard(channels: List[Dict]) -> InlineKeyboardBuilder:
@@ -24,7 +24,7 @@ def get_task_management_keyboard(tasks: List[Dict]) -> InlineKeyboardBuilder:
     """Инлайн-клавиатура для редактирования/удаления задач."""
     builder = InlineKeyboardBuilder()
     for task in tasks:
-        button_text = f"Задача {task['id']}: {task['message'][:20]}..."
+        button_text = f"📄 Задача {task['id']}: {task['message'][:20]}..."
         builder.row(InlineKeyboardButton(text=button_text, callback_data=f"task_{task['id']}"))
     return builder.as_markup()
 
@@ -32,8 +32,8 @@ def get_task_action_keyboard(task_id: int) -> InlineKeyboardBuilder:
     """Инлайн-клавиатура для выбора действия с задачей (редактировать/удалить)."""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="Редактировать", callback_data=f"edit_{task_id}"),
-        InlineKeyboardButton(text="Удалить", callback_data=f"delete_{task_id}")
+        InlineKeyboardButton(text="📝 Редактировать", callback_data=f"edit_{task_id}"),
+        InlineKeyboardButton(text="❌ Удалить", callback_data=f"delete_{task_id}")
     )
     return builder.as_markup()
 
@@ -50,7 +50,7 @@ def get_date_keyboard(selected_date: datetime = None) -> InlineKeyboardBuilder:
     )
 
     # Кнопка подтверждения
-    builder.row(InlineKeyboardButton(text="Подтвердить дату", callback_data=f"confirm_date_{current_date.strftime('%Y-%m-%d')}"))
+    builder.row(InlineKeyboardButton(text="✅ Подтвердить дату", callback_data=f"confirm_date_{current_date.strftime('%Y-%m-%d')}"))
     return builder.as_markup()
 
 def get_time_keyboard(selected_time: datetime = None) -> InlineKeyboardBuilder:
@@ -75,24 +75,22 @@ def get_edit_action_keyboard(task_id: int) -> InlineKeyboardBuilder:
     """Инлайн-клавиатура для выбора, что редактировать: текст или время."""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="Редактировать текст", callback_data=f"edit_message_{task_id}"),
-        InlineKeyboardButton(text="Редактировать время", callback_data=f"edit_time_{task_id}")
+        InlineKeyboardButton(text="📄 Редактировать текст", callback_data=f"edit_message_{task_id}"),
+        InlineKeyboardButton(text="🗓 Редактировать время", callback_data=f"edit_time_{task_id}")
     )
     return builder.as_markup()
 
 def get_start_keyboard() -> InlineKeyboardBuilder:
     """Инлайн-клавиатура для стартового сообщения."""
     builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(text="Создать задачу", callback_data="start_create"),
-        InlineKeyboardButton(text="Управление задачами", callback_data="start_manage")
-    )
+    builder.row(InlineKeyboardButton(text="⭐️ Создать задачу", callback_data="start_create"))
+    builder.row(InlineKeyboardButton(text="📝 Управление задачами", callback_data="start_manage"))
     return builder.as_markup()
 
 def back_keyboard() -> InlineKeyboardBuilder:
 
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="Назад", callback_data="back"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="back"),
     )
     return builder.as_markup()
