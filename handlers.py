@@ -253,29 +253,33 @@ async def process_edit_task(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # Обработка выбора действия редактирования
-@main_router.callback_query(CreateTask.edit_action, F.data.startswith("edit_"))
+@main_router.callback_query(CreateTask.edit_action, F.data.startswith("edit_message_"))
 async def process_edit_action(callback: CallbackQuery, state: FSMContext):
-    action = callback.data
+    data = await state.get_data()
+
+    await callback.message.edit_text("Введите новый текст сообщения (или /skip, чтобы оставить без изменений):", reply_markup=back_keyboard())
+    await state.set_state(CreateTask.edit_message)
+    
+    await callback.answer()
+
+# Обработка выбора действия редактирования
+@main_router.callback_query(CreateTask.edit_action, F.data.startswith("edit_time_"))
+async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     task_id = data["task_id"]
     
-    if action.startswith("edit_message_"):
-        await callback.message.edit_text("Введите новый текст сообщения (или /skip, чтобы оставить без изменений):", reply_markup=back_keyboard())
-        await state.set_state(CreateTask.edit_message)
-    
-    elif action.startswith("edit_time_"):
-        tasks = load_tasks()
-        task = next((t for t in tasks if t["id"] == task_id), None)
-        if task and task["schedule_type"] == "immediate":
-            await callback.message.edit_text("Эта задача отправляется сразу, редактирование времени невозможно!")
-            await state.clear()
-        else:
-            # Если время уже задано, используем его как начальное значение
-            selected_date = datetime.now()
-            if task and task["schedule_time"]:
-                selected_date = datetime.strptime(task["schedule_time"], "%Y-%m-%d %H:%M:%S")
-            await callback.message.edit_text("Выберите новую дату:", reply_markup=get_date_keyboard(selected_date))
-            await state.set_state(CreateTask.edit_date)
+    tasks = load_tasks()
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    if task and task["schedule_type"] == "immediate":
+        await callback.message.edit_text("Эта задача отправляется сразу, редактирование времени невозможно!")
+        await state.clear()
+    else:
+        # Если время уже задано, используем его как начальное значение
+        selected_date = datetime.now()
+        if task and task["schedule_time"]:
+            selected_date = datetime.strptime(task["schedule_time"], "%Y-%m-%d %H:%M:%S")
+        await callback.message.edit_text("Выберите новую дату:", reply_markup=get_date_keyboard(selected_date))
+        await state.set_state(CreateTask.edit_date)
     
     await callback.answer()
 
