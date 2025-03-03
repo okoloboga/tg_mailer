@@ -44,6 +44,18 @@ async def cmd_start(message: Message):
         reply_markup=get_start_keyboard()
     )
 
+# Проверка, что пользователь — админ, и стартовое сообщение
+@main_router.callback_query(F.data == 'back')
+async def cmd_start(callback: CallbackQuery):
+    admin_config = get_config(Admin, "admin")
+    if str(callback.from_user.id) != admin_config.id:
+        await callback.message.edit_text("Вы не администратор!")
+        return
+    await callback.message.edit_text(
+        "Привет! Я бот для управления каналами. Что хочешь сделать?",
+        reply_markup=get_start_keyboard()
+    )
+
 # Обработка кнопок стартового меню
 @main_router.callback_query(F.data.in_(["start_create", "start_manage"]))
 async def process_start_action(callback: CallbackQuery, state: FSMContext):

@@ -88,3 +88,11 @@ def get_start_keyboard() -> InlineKeyboardBuilder:
         InlineKeyboardButton(text="Управление задачами", callback_data="start_manage")
     )
     return builder.as_markup()
+
+def back_keyboard() -> InlineKeyboardBuilder:
+
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="Назад", callback_data="back"),
+    )
+    return builder.as_markup()
