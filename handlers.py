@@ -94,6 +94,7 @@ async def process_message(message: Message, state: FSMContext):
     await message.answer("Выберите тип отправки:", reply_markup=get_schedule_type_keyboard())
     await state.set_state(CreateTask.schedule_type)
 
+
 @main_router.callback_query(CreateTask.schedule_type, F.data.startswith("schedule_"))
 async def process_schedule_type(callback: CallbackQuery, state: FSMContext):
     schedule_type = callback.data.split("_")[1]  # "immediate", "delayed", "daily"
@@ -104,13 +105,17 @@ async def process_schedule_type(callback: CallbackQuery, state: FSMContext):
         channels = get_config(list[Channel], "channels")
         await callback.message.edit_text("Выберите канал:", reply_markup=get_channel_keyboard(channels))
         await state.set_state(CreateTask.channel)
-    else:
+    elif schedule_type == "delayed":
         await callback.message.edit_text("Выберите дату:", reply_markup=get_date_keyboard())
         await state.set_state(CreateTask.schedule_date)
+    else:  # Для "daily" запрашиваем только время
+        await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard())
+        await state.set_state(CreateTask.schedule_time)
     await callback.answer()
 
-# Обработка выбора даты
-@main_router.callback_query(CreateTask.schedule_date, F.data.startswith("date_"))
+
+# Обработка выбора даты (используется только для delayed)
+@main_router.callback_query(CreateTask.schedule_date, F.data.regexp(r"^(date_prev_day_|date_next_day_)\d{4}-\d{2}-\d{2}$"))
 async def process_date_selection(callback: CallbackQuery, state: FSMContext):
     action = callback.data
     if action.startswith("date_prev_day_"):
@@ -125,16 +130,11 @@ async def process_date_selection(callback: CallbackQuery, state: FSMContext):
         new_date = current_date + timedelta(days=1)
         await callback.message.edit_text("Выберите дату:", reply_markup=get_date_keyboard(new_date))
     
-    elif action.startswith("confirm_date_"):
-        selected_date_str = action.split("_")[-1]
-        await state.update_data(schedule_date=selected_date_str)
-        await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard())
-        await state.set_state(CreateTask.schedule_time)
-    
     await callback.answer()
 
+
 # Обработка выбора времени
-@main_router.callback_query(CreateTask.schedule_time, F.data.startswith("time_"))
+@main_router.callback_query(CreateTask.schedule_time, F.data.regexp(r"^(time_prev_hour_|time_next_hour_|time_prev_min_|time_next_min_)\d{2}:\d{2}$"))
 async def process_time_selection(callback: CallbackQuery, state: FSMContext):
     action = callback.data
     if action.startswith("time_prev_hour_"):
@@ -160,16 +160,6 @@ async def process_time_selection(callback: CallbackQuery, state: FSMContext):
         current_time = datetime.strptime(current_time_str, "%H:%M")
         new_time = current_time + timedelta(minutes=5)  # Шаг 5 минут
         await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard(new_time))
-    
-    elif action.startswith("confirm_time_"):
-        selected_time_str = action.split("_")[-1]
-        data = await state.get_data()
-        selected_date = data["schedule_date"]
-        full_datetime = f"{selected_date} {selected_time_str}:00"  # Добавляем секунды
-        await state.update_data(schedule_time=full_datetime)
-        channels = get_config(list[Channel], "channels")
-        await callback.message.edit_text("Выберите канал:", reply_markup=get_channel_keyboard(channels))
-        await state.set_state(CreateTask.channel)
     
     await callback.answer()
 
@@ -206,8 +196,8 @@ async def process_channel(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer()
 
-# Обработка подтверждения даты
-@main_router.callback_query(CreateTask.schedule_date, F.data.startswith("confirm_date_"))
+# Обработка подтверждения даты (используется только для delayed)
+@main_router.callback_query(CreateTask.schedule_date, F.data.regexp(r"^confirm_date_\d{4}-\d{2}-\d{2}$"))
 async def process_confirm_date(callback: CallbackQuery, state: FSMContext):
     selected_date_str = callback.data.split("_")[-1]
     await state.update_data(schedule_date=selected_date_str)
@@ -216,12 +206,19 @@ async def process_confirm_date(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # Обработка подтверждения времени
-@main_router.callback_query(CreateTask.schedule_time, F.data.startswith("confirm_time_"))
+@main_router.callback_query(CreateTask.schedule_time, F.data.regexp(r"^confirm_time_\d{2}:\d{2}$"))
 async def process_confirm_time(callback: CallbackQuery, state: FSMContext):
     selected_time_str = callback.data.split("_")[-1]
     data = await state.get_data()
-    selected_date = data["schedule_date"]
-    full_datetime = f"{selected_date} {selected_time_str}:00"  # Добавляем секунды
+    schedule_type = data["schedule_type"]
+    
+    if schedule_type == "daily":
+        # Для daily сохраняем только время
+        full_datetime = f"{selected_time_str}:00"
+    else:  # Для delayed добавляем дату
+        selected_date = data["schedule_date"]
+        full_datetime = f"{selected_date} {selected_time_str}:00"
+    
     await state.update_data(schedule_time=full_datetime)
     channels = get_config(list[Channel], "channels")
     await callback.message.edit_text("Выберите канал:", reply_markup=get_channel_keyboard(channels))
@@ -253,35 +250,40 @@ async def process_edit_task(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # Обработка выбора действия редактирования
-@main_router.callback_query(CreateTask.edit_action, F.data.regexp(r"^(edit_message_)\d+$"))
+@main_router.callback_query(CreateTask.edit_action, F.data.regexp(r"^(edit_message_|edit_time_)\d+$"))
 async def process_edit_action(callback: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-
-    await callback.message.edit_text("Введите новый текст сообщения:", reply_markup=back_keyboard())
-    await state.set_state(CreateTask.edit_message)
-    
-    await callback.answer()
-
-# Обработка выбора действия редактирования
-@main_router.callback_query(CreateTask.edit_action, F.data.regexp(r"^(edit_time_)\d+$"))
-async def process_edit_action(callback: CallbackQuery, state: FSMContext):
+    action = callback.data
     data = await state.get_data()
     task_id = data["task_id"]
     
-    tasks = load_tasks()
-    task = next((t for t in tasks if t["id"] == task_id), None)
-    if task and task["schedule_type"] == "immediate":
-        await callback.message.edit_text("Эта задача отправляется сразу, редактирование времени невозможно!")
-        await state.clear()
-    else:
-        # Если время уже задано, используем его как начальное значение
-        selected_date = datetime.now()
-        if task and task["schedule_time"]:
-            selected_date = datetime.strptime(task["schedule_time"], "%Y-%m-%d %H:%M:%S")
-        await callback.message.edit_text("Выберите новую дату:", reply_markup=get_date_keyboard(selected_date))
-        await state.set_state(CreateTask.edit_date)
+    if action.startswith("edit_message_"):
+        await callback.message.edit_text("Введите новый текст сообщения (или /skip, чтобы оставить без изменений):")
+        await state.set_state(CreateTask.edit_message)
+    
+    elif action.startswith("edit_time_"):
+        tasks = load_tasks()
+        task = next((t for t in tasks if t["id"] == task_id), None)
+        if task and task["schedule_type"] == "immediate":
+            await callback.message.edit_text("Эта задача отправляется сразу, редактирование времени невозможно!")
+            await state.clear()
+        else:
+            if task["schedule_type"] == "daily":
+                # Для daily задач запрашиваем только время
+                selected_time = datetime.now()
+                if task["schedule_time"]:
+                    selected_time = datetime.strptime(task["schedule_time"], "%H:%M:%S")
+                await callback.message.edit_text("Выберите новое время:", reply_markup=get_time_keyboard(selected_time))
+                await state.set_state(CreateTask.edit_time)
+            else:
+                # Для delayed запрашиваем дату и время
+                selected_date = datetime.now()
+                if task and task["schedule_time"]:
+                    selected_date = datetime.strptime(task["schedule_time"], "%Y-%m-%d %H:%M:%S")
+                await callback.message.edit_text("Выберите новую дату:", reply_markup=get_date_keyboard(selected_date))
+                await state.set_state(CreateTask.edit_date)
     
     await callback.answer()
+
 
 # Обработка редактирования текста
 @main_router.message(CreateTask.edit_message)
@@ -338,29 +340,25 @@ async def process_edit_time_selection(callback: CallbackQuery, state: FSMContext
     if action.startswith("time_prev_hour_"):
         current_time_str = action.split("_")[-1]
         current_time = datetime.strptime(current_time_str, "%H:%M")
-        new_time = current_time.replace(year=datetime.now().year, month=1, day=1)
-        new_time = new_time - timedelta(hours=1)
+        new_time = current_time - timedelta(hours=1)
         await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard(new_time))
     
     elif action.startswith("time_next_hour_"):
         current_time_str = action.split("_")[-1]
         current_time = datetime.strptime(current_time_str, "%H:%M")
-        new_time = current_time.replace(year=datetime.now().year, month=1, day=1)
-        new_time = new_time + timedelta(hours=1)
+        new_time = current_time + timedelta(hours=1)
         await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard(new_time))
     
     elif action.startswith("time_prev_min_"):
         current_time_str = action.split("_")[-1]
         current_time = datetime.strptime(current_time_str, "%H:%M")
-        new_time = current_time.replace(year=datetime.now().year, month=1, day=1)
-        new_time = new_time - timedelta(minutes=5)  # Шаг 5 минут
+        new_time = current_time - timedelta(minutes=5)  # Шаг 5 минут
         await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard(new_time))
     
     elif action.startswith("time_next_min_"):
         current_time_str = action.split("_")[-1]
         current_time = datetime.strptime(current_time_str, "%H:%M")
-        new_time = current_time.replace(year=datetime.now().year, month=1, day=1)
-        new_time = new_time + timedelta(minutes=5)  # Шаг 5 минут
+        new_time = current_time + timedelta(minutes=5)  # Шаг 5 минут
         await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard(new_time))
     
     await callback.answer()
@@ -370,9 +368,18 @@ async def process_edit_time_selection(callback: CallbackQuery, state: FSMContext
 async def process_confirm_edit_time(callback: CallbackQuery, state: FSMContext):
     selected_time_str = callback.data.split("_")[-1]
     data = await state.get_data()
-    selected_date = data["edit_date"]
     task_id = data["task_id"]
-    full_datetime = f"{selected_date} {selected_time_str}:00"
+    tasks = load_tasks()
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    
+    if task["schedule_type"] == "daily":
+        # Для daily сохраняем только время
+        full_datetime = f"{selected_time_str}:00"
+    else:
+        # Для delayed добавляем дату
+        selected_date = data["edit_date"]
+        full_datetime = f"{selected_date} {selected_time_str}:00"
+    
     edit_task(task_id, new_schedule_time=full_datetime)
     await callback.message.edit_text(f"Время задачи #{task_id} обновлено!", reply_markup=back_keyboard())
     await state.clear()

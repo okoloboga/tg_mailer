@@ -22,13 +22,20 @@ def add_task(message: str, channel_id: str, schedule_type: str, schedule_time: O
     """Добавляем новую задачу и возвращаем её ID."""
     tasks = load_tasks()
     task_id = len(tasks) + 1
+    
+    # Для daily задач сохраняем только время (HH:MM:SS)
+    if schedule_type == "daily" and schedule_time:
+        # Извлекаем только время из "YYYY-MM-DD HH:MM:SS"
+        schedule_time = schedule_time.split(" ")[1]
+    
     new_task = {
         "id": task_id,
         "message": message,
         "channel_id": channel_id,
         "schedule_type": schedule_type,  # "immediate", "delayed", "daily"
-        "schedule_time": schedule_time,  # В формате "YYYY-MM-DD HH:MM:SS" или None для immediate
-        "status": "pending"
+        "schedule_time": schedule_time,  # Для daily — только "HH:MM:SS", для других — полный формат или None
+        "status": "pending",
+        "last_sent_date": None  # Для отслеживания последнего отправления
     }
     tasks.append(new_task)
     save_tasks(tasks)
@@ -76,13 +83,26 @@ async def task_scheduler(bot):
                     task["status"] = "done"
             
             elif schedule_type == "daily" and schedule_time:
-                scheduled = datetime.strptime(schedule_time, "%Y-%m-%d %H:%M:%S")
+                # Для daily schedule_time хранит только время в формате "HH:MM:SS"
+                scheduled = datetime.strptime(schedule_time, "%H:%M:%S")
                 current_time_only = current_time.time()
                 scheduled_time_only = scheduled.time()
+                
+                # Проверяем, отправлялось ли сообщение сегодня
+                last_sent_date = task.get("last_sent_date")
+                current_date = current_time.date().isoformat()
+                
+                # Если сообщение уже отправлено сегодня, пропускаем до следующего дня
+                if last_sent_date == current_date:
+                    continue
+                
+                # Проверяем, наступило ли время для отправки
                 if (current_time_only.hour > scheduled_time_only.hour or 
                     (current_time_only.hour == scheduled_time_only.hour and 
                      current_time_only.minute >= scheduled_time_only.minute)):
                     await bot.send_message(chat_id=task["channel_id"], text=task["message"])
+                    # Обновляем дату последнего отправления
+                    task["last_sent_date"] = current_date
                     # Для "daily" статус не меняем, чтобы повторялось каждый день
 
         save_tasks(tasks)  # Обновляем статусы
