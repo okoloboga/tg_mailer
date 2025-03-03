@@ -1,10 +1,19 @@
 import json
 import os
 import asyncio
+import logging
+
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 
 TASKS_FILE = "tasks.json"
+
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(filename)s:%(lineno)d #%(levelname)-8s '
+           '[%(asctime)s] - %(name)s - %(message)s')
 
 def load_tasks() -> List[Dict]:
     """Загружаем задачи из JSON."""
@@ -22,11 +31,6 @@ def add_task(message: str, channel_id: str, schedule_type: str, schedule_time: O
     """Добавляем новую задачу и возвращаем её ID."""
     tasks = load_tasks()
     task_id = len(tasks) + 1
-    
-    # Для daily задач сохраняем только время (HH:MM:SS)
-    if schedule_type == "daily" and schedule_time:
-        # Извлекаем только время из "YYYY-MM-DD HH:MM:SS"
-        schedule_time = schedule_time.split(" ")[1]
     
     new_task = {
         "id": task_id,
