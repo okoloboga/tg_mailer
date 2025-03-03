@@ -26,6 +26,9 @@ def get_task_management_keyboard(tasks: List[Dict]) -> InlineKeyboardBuilder:
     for task in tasks:
         button_text = f"📄 Задача {task['id']}: {task['message'][:20]}..."
         builder.row(InlineKeyboardButton(text=button_text, callback_data=f"task_{task['id']}"))
+        builder.row(
+            InlineKeyboardButton(text="◀️ Назад", callback_data="back")
+        )
     return builder.as_markup()
 
 def get_task_action_keyboard(task_id: int) -> InlineKeyboardBuilder:
@@ -35,6 +38,10 @@ def get_task_action_keyboard(task_id: int) -> InlineKeyboardBuilder:
         InlineKeyboardButton(text="📝 Редактировать", callback_data=f"edit_{task_id}"),
         InlineKeyboardButton(text="❌ Удалить", callback_data=f"delete_{task_id}")
     )
+    builder.row(
+        InlineKeyboardButton(text="◀️ Назад", callback_data="back")
+    )
+
     return builder.as_markup()
 
 def get_date_keyboard(selected_date: datetime = None) -> InlineKeyboardBuilder:
@@ -76,7 +83,10 @@ def get_edit_action_keyboard(task_id: int) -> InlineKeyboardBuilder:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="📄 Редактировать текст", callback_data=f"edit_message_{task_id}"),
-        InlineKeyboardButton(text="🗓 Редактировать время", callback_data=f"edit_time_{task_id}")
+        InlineKeyboardButton(text="🗓 Редактировать время", callback_data=f"edit_time_{task_id}"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="◀️ Назад", callback_data="back")
     )
     return builder.as_markup()
 
@@ -91,6 +101,6 @@ def back_keyboard() -> InlineKeyboardBuilder:
 
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="◀️ Назад", callback_data="back"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="back")
     )
     return builder.as_markup()
