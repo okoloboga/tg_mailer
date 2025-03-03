@@ -270,12 +270,14 @@ async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     
     tasks = load_tasks()
     task = next((t for t in tasks if t["id"] == task_id), None)
+    schedule_type = task['schedule_type']
     if task and task["schedule_type"] == "immediate":
         await callback.message.edit_text("Эта задача отправляется сразу, редактирование времени невозможно!")
         await state.clear()
     else:
         # Если время уже задано, используем его как начальное значение
         selected_date = datetime.now()
+        await state.update_data(schedule_type=schedule_type)
         if task and task["schedule_time"]:
             selected_date = datetime.strptime(task["schedule_time"], "%Y-%m-%d %H:%M:%S")
         await callback.message.edit_text("Выберите новую дату:", reply_markup=get_date_keyboard(selected_date))
