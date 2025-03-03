@@ -7,7 +7,7 @@ from aiogram.client.default import DefaultBotProperties
 
 from handlers import main_router
 from config import get_config, BotConfig
-
+from utils import task_scheduler  # Импортируем планировщик
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,6 @@ async def main():
     )
     logger.info('Starting Bot')
 
-    # Init Bot in Dispatcher
     bot_config = get_config(BotConfig, "bot")
     
     if not bot_config.token:
@@ -30,12 +29,13 @@ async def main():
               default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
 
-    # Routers, dialogs, middlewares
     dp.include_routers(main_router)
  
-    # Skipping old updates
     await bot.delete_webhook(drop_pending_updates=True)
     logger.info("Webhook deleted, ready for polling.")
+    
+    # Запускаем планировщик в отдельной задаче
+    asyncio.create_task(task_scheduler(bot))
     
     await dp.start_polling(bot)
     return bot
