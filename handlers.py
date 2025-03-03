@@ -197,6 +197,28 @@ async def process_channel(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer()
 
+# Обработка подтверждения даты
+@main_router.callback_query(CreateTask.schedule_date, F.data.startswith("confirm_date_"))
+async def process_confirm_date(callback: CallbackQuery, state: FSMContext):
+    selected_date_str = callback.data.split("_")[-1]
+    await state.update_data(schedule_date=selected_date_str)
+    await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard())
+    await state.set_state(CreateTask.schedule_time)
+    await callback.answer()
+
+# Обработка подтверждения времени
+@main_router.callback_query(CreateTask.schedule_time, F.data.startswith("confirm_time_"))
+async def process_confirm_time(callback: CallbackQuery, state: FSMContext):
+    selected_time_str = callback.data.split("_")[-1]
+    data = await state.get_data()
+    selected_date = data["schedule_date"]
+    full_datetime = f"{selected_date} {selected_time_str}:00"  # Добавляем секунды
+    await state.update_data(schedule_time=full_datetime)
+    channels = get_config(list[Channel], "channels")
+    await callback.message.edit_text("Выберите канал:", reply_markup=get_channel_keyboard(channels))
+    await state.set_state(CreateTask.channel)
+    await callback.answer()
+
 @main_router.callback_query(F.data.startswith("task_"))
 async def process_task_selection(callback: CallbackQuery):
     task_id = int(callback.data.split("_")[1])
