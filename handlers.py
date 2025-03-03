@@ -257,7 +257,7 @@ async def process_edit_task(callback: CallbackQuery, state: FSMContext):
 async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
-    await callback.message.edit_text("Введите новый текст сообщения (или /skip, чтобы оставить без изменений):", reply_markup=back_keyboard())
+    await callback.message.edit_text("Введите новый текст сообщения:", reply_markup=back_keyboard())
     await state.set_state(CreateTask.edit_message)
     
     await callback.answer()
@@ -291,7 +291,7 @@ async def process_edit_message(message: Message, state: FSMContext):
     new_message = message.text
     if new_message != "/skip":
         edit_task(task_id, new_message=new_message)
-        await message.answer(f"Текст задачи #{task_id} обновлён!")
+        await message.answer(f"Текст задачи #{task_id} обновлён!", reply_markup=back_keyboard())
     else:
         await message.answer("Текст оставлен без изменений.")
     await state.clear()
@@ -363,7 +363,7 @@ async def process_edit_time_selection(callback: CallbackQuery, state: FSMContext
         task_id = data["task_id"]
         full_datetime = f"{selected_date} {selected_time_str}:00"
         edit_task(task_id, new_schedule_time=full_datetime)
-        await callback.message.edit_text(f"Время задачи #{task_id} обновлено!")
+        await callback.message.edit_text(f"Время задачи #{task_id} обновлено!", reply_markup=back_keyboard())
         await state.clear()
     
     await callback.answer()
