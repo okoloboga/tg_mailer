@@ -82,8 +82,8 @@ def get_edit_action_keyboard(task_id: int) -> InlineKeyboardBuilder:
     """Инлайн-клавиатура для выбора, что редактировать: текст или время."""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="📄 Текст", callback_data=f"edit_message_{task_id}"),
-        InlineKeyboardButton(text="🗓 Время", callback_data=f"edit_time_{task_id}"),
+        InlineKeyboardButton(text="📄 Текст", callback_data=f"editmessage_{task_id}"),
+        InlineKeyboardButton(text="🗓 Время", callback_data=f"edittime_{task_id}"),
     )
     builder.row(
         InlineKeyboardButton(text="◀️ Назад", callback_data="back")

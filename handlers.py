@@ -253,7 +253,7 @@ async def process_edit_task(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # Обработка выбора действия редактирования
-@main_router.callback_query(CreateTask.edit_action, F.data.startswith("edit_message_"))
+@main_router.callback_query(CreateTask.edit_action, F.data.startswith("editmessage_"))
 async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
@@ -263,7 +263,7 @@ async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # Обработка выбора действия редактирования
-@main_router.callback_query(CreateTask.edit_action, F.data.startswith("edit_time_"))
+@main_router.callback_query(CreateTask.edit_action, F.data.startswith("edittime_"))
 async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     task_id = data["task_id"]
