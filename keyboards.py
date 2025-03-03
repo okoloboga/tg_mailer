@@ -8,9 +8,9 @@ def get_schedule_type_keyboard() -> InlineKeyboardBuilder:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="Сразу", callback_data="schedule_immediate"),
-        InlineKeyboardButton(text="С отсрочкой", callback_data="schedule_delayed"),
-        InlineKeyboardButton(text="Ежедневно", callback_data="schedule_daily")
+        InlineKeyboardButton(text="Позже", callback_data="schedule_delayed")
     )
+    builder.row(InlineKeyboardButton(text="Ежедневно", callback_data="schedule_daily"))
     return builder.as_markup()
 
 def get_channel_keyboard(channels: List[Dict]) -> InlineKeyboardBuilder:

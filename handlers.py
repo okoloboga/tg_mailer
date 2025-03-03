@@ -68,7 +68,7 @@ async def process_start_action(callback: CallbackQuery, state: FSMContext):
         return
 
     if action == "start_create":
-        await callback.message.edit_text("Введите текст сообщения:")
+        await callback.message.edit_text("Введите текст сообщения:", reply_markup=back_keyboard())
         await state.set_state(CreateTask.message)
     elif action == "start_manage":
         tasks = load_tasks()
@@ -183,7 +183,7 @@ async def process_channel(callback: CallbackQuery, state: FSMContext):
         schedule_type=data["schedule_type"],
         schedule_time=data["schedule_time"]
     )
-    await callback.message.edit_text(f"Задача #{task_id} создана!")
+    await callback.message.edit_text(f"Задача #{task_id} создана!", reply_markup=back_keyboard())
     await state.clear()
     await callback.answer()
 
@@ -198,7 +198,7 @@ async def process_task_selection(callback: CallbackQuery):
 async def process_delete_task(callback: CallbackQuery):
     task_id = int(callback.data.split("_")[1])
     delete_task(task_id)
-    await callback.message.edit_text(f"Задача #{task_id} удалена!")
+    await callback.message.edit_text(f"Задача #{task_id} удалена!", reply_markup=back_keyboard())
     await callback.answer()
 
 # Обработка редактирования — выбор, что редактировать
@@ -218,7 +218,7 @@ async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     task_id = data["task_id"]
     
     if action.startswith("edit_message_"):
-        await callback.message.edit_text("Введите новый текст сообщения (или /skip, чтобы оставить без изменений):")
+        await callback.message.edit_text("Введите новый текст сообщения (или /skip, чтобы оставить без изменений):", reply_markup=back_keyboard())
         await state.set_state(CreateTask.edit_message)
     
     elif action.startswith("edit_time_"):
