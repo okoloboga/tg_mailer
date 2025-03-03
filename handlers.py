@@ -279,7 +279,7 @@ async def process_edit_action(callback: CallbackQuery, state: FSMContext):
         if task and task["schedule_time"]:
             selected_date = datetime.strptime(task["schedule_time"], "%Y-%m-%d %H:%M:%S")
         await callback.message.edit_text("Выберите новую дату:", reply_markup=get_date_keyboard(selected_date))
-        await state.set_state(CreateTask.edit_date)
+        await state.set_state(CreateTask.schedule_date)
     
     await callback.answer()
 
