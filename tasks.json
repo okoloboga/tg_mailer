@@ -1,0 +1,10 @@
+[
+    {
+        "id": 1,
+        "message": "2",
+        "channel_id": "-1002423034300",
+        "schedule_type": "delayed",
+        "schedule_time": "2025-03-04 00:00:00",
+        "status": "pending"
+    }
+]

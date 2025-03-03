@@ -243,7 +243,7 @@ async def process_delete_task(callback: CallbackQuery):
     await callback.answer()
 
 # Обработка редактирования — выбор, что редактировать
-@main_router.callback_query(F.data.startswith("edit_"))
+@main_router.callback_query(F.data.regexp(r"^edit_\d+$"))  # Регулярное выражение для "edit_число"
 async def process_edit_task(callback: CallbackQuery, state: FSMContext):
     logger.info(callback.data.split("_"))
     task_id = int(callback.data.split("_")[1])
@@ -253,7 +253,7 @@ async def process_edit_task(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # Обработка выбора действия редактирования
-@main_router.callback_query(CreateTask.edit_action, F.data.startswith("edit_message_"))
+@main_router.callback_query(CreateTask.edit_action, F.data.regexp(r"^(edit_message_)\d+$"))
 async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
@@ -263,15 +263,13 @@ async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # Обработка выбора действия редактирования
-@main_router.callback_query(CreateTask.edit_action, F.data.startswith("edit_time_"))
+@main_router.callback_query(CreateTask.edit_action, F.data.regexp(r"^(edit_time_)\d+$"))
 async def process_edit_action(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     task_id = data["task_id"]
     
     tasks = load_tasks()
     task = next((t for t in tasks if t["id"] == task_id), None)
-    schedule_type = task['schedule_type']
-    message = task['message']
     if task and task["schedule_type"] == "immediate":
         await callback.message.edit_text("Эта задача отправляется сразу, редактирование времени невозможно!")
         await state.clear()
@@ -298,8 +296,8 @@ async def process_edit_message(message: Message, state: FSMContext):
         await message.answer("Текст оставлен без изменений.")
     await state.clear()
 
-# Обработка редактирования даты
-@main_router.callback_query(CreateTask.edit_date, F.data.startswith("date_"))
+# Обработка переключения дней при редактировании даты
+@main_router.callback_query(CreateTask.edit_date, F.data.regexp(r"^(date_prev_day_|date_next_day_)\d{4}-\d{2}-\d{2}$"))
 async def process_edit_date_selection(callback: CallbackQuery, state: FSMContext):
     action = callback.data
     if action.startswith("date_prev_day_"):
@@ -314,58 +312,68 @@ async def process_edit_date_selection(callback: CallbackQuery, state: FSMContext
         new_date = current_date + timedelta(days=1)
         await callback.message.edit_text("Выберите дату:", reply_markup=get_date_keyboard(new_date))
     
-    elif action.startswith("confirm_date_"):
-        selected_date_str = action.split("_")[-1]
-        await state.update_data(edit_date=selected_date_str)
-        # Используем текущее время задачи или текущее, если его нет
-        data = await state.get_data()
-        task_id = data["task_id"]
-        tasks = load_tasks()
-        task = next((t for t in tasks if t["id"] == task_id), None)
-        selected_time = datetime.now().replace(hour=0, minute=0, second=0)
-        if task and task["schedule_time"]:
-            selected_time = datetime.strptime(task["schedule_time"], "%Y-%m-%d %H:%M:%S")
-        await callback.message.edit_text("Выберите новое время:", reply_markup=get_time_keyboard(selected_time))
-        await state.set_state(CreateTask.edit_time)
-    
     await callback.answer()
 
-# Обработка редактирования времени
-@main_router.callback_query(CreateTask.edit_time, F.data.startswith("time_"))
+# Обработка подтверждения даты при редактировании
+@main_router.callback_query(CreateTask.edit_date, F.data.regexp(r"^confirm_date_\d{4}-\d{2}-\d{2}$"))
+async def process_confirm_edit_date(callback: CallbackQuery, state: FSMContext):
+    selected_date_str = callback.data.split("_")[-1]
+    await state.update_data(edit_date=selected_date_str)
+    # Используем текущее время задачи или текущее, если его нет
+    data = await state.get_data()
+    task_id = data["task_id"]
+    tasks = load_tasks()
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    selected_time = datetime.now().replace(hour=0, minute=0, second=0)
+    if task and task["schedule_time"]:
+        selected_time = datetime.strptime(task["schedule_time"], "%Y-%m-%d %H:%M:%S")
+    await callback.message.edit_text("Выберите новое время:", reply_markup=get_time_keyboard(selected_time))
+    await state.set_state(CreateTask.edit_time)
+    await callback.answer()
+
+# Обработка переключения времени при редактировании
+@main_router.callback_query(CreateTask.edit_time, F.data.regexp(r"^(time_prev_hour_|time_next_hour_|time_prev_min_|time_next_min_)\d{2}:\d{2}$"))
 async def process_edit_time_selection(callback: CallbackQuery, state: FSMContext):
     action = callback.data
     if action.startswith("time_prev_hour_"):
         current_time_str = action.split("_")[-1]
         current_time = datetime.strptime(current_time_str, "%H:%M")
-        new_time = current_time - timedelta(hours=1)
+        new_time = current_time.replace(year=datetime.now().year, month=1, day=1)
+        new_time = new_time - timedelta(hours=1)
         await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard(new_time))
     
     elif action.startswith("time_next_hour_"):
         current_time_str = action.split("_")[-1]
         current_time = datetime.strptime(current_time_str, "%H:%M")
-        new_time = current_time + timedelta(hours=1)
+        new_time = current_time.replace(year=datetime.now().year, month=1, day=1)
+        new_time = new_time + timedelta(hours=1)
         await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard(new_time))
     
     elif action.startswith("time_prev_min_"):
         current_time_str = action.split("_")[-1]
         current_time = datetime.strptime(current_time_str, "%H:%M")
-        new_time = current_time - timedelta(minutes=5)  # Шаг 5 минут
+        new_time = current_time.replace(year=datetime.now().year, month=1, day=1)
+        new_time = new_time - timedelta(minutes=5)  # Шаг 5 минут
         await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard(new_time))
     
     elif action.startswith("time_next_min_"):
         current_time_str = action.split("_")[-1]
         current_time = datetime.strptime(current_time_str, "%H:%M")
-        new_time = current_time + timedelta(minutes=5)  # Шаг 5 минут
+        new_time = current_time.replace(year=datetime.now().year, month=1, day=1)
+        new_time = new_time + timedelta(minutes=5)  # Шаг 5 минут
         await callback.message.edit_text("Выберите время:", reply_markup=get_time_keyboard(new_time))
     
-    elif action.startswith("confirm_time_"):
-        selected_time_str = action.split("_")[-1]
-        data = await state.get_data()
-        selected_date = data["edit_date"]
-        task_id = data["task_id"]
-        full_datetime = f"{selected_date} {selected_time_str}:00"
-        edit_task(task_id, new_schedule_time=full_datetime)
-        await callback.message.edit_text(f"Время задачи #{task_id} обновлено!", reply_markup=back_keyboard())
-        await state.clear()
-    
+    await callback.answer()
+
+# Обработка подтверждения времени при редактировании
+@main_router.callback_query(CreateTask.edit_time, F.data.regexp(r"^confirm_time_\d{2}:\d{2}$"))
+async def process_confirm_edit_time(callback: CallbackQuery, state: FSMContext):
+    selected_time_str = callback.data.split("_")[-1]
+    data = await state.get_data()
+    selected_date = data["edit_date"]
+    task_id = data["task_id"]
+    full_datetime = f"{selected_date} {selected_time_str}:00"
+    edit_task(task_id, new_schedule_time=full_datetime)
+    await callback.message.edit_text(f"Время задачи #{task_id} обновлено!", reply_markup=back_keyboard())
+    await state.clear()
     await callback.answer()
