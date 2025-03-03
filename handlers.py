@@ -246,7 +246,7 @@ async def process_delete_task(callback: CallbackQuery):
 @main_router.callback_query(F.data.startswith("edit_"))
 async def process_edit_task(callback: CallbackQuery, state: FSMContext):
     logger.info(callback.data.split("_"))
-    task_id = int(callback.data.split("_")[1])
+    task_id = int(callback.data.split("_")[2])
     await state.update_data(task_id=task_id)
     await callback.message.edit_text("Что хотите редактировать?", reply_markup=get_edit_action_keyboard(task_id))
     await state.set_state(CreateTask.edit_action)
